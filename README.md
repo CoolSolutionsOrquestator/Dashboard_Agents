@@ -1,48 +1,73 @@
-# Dashboard Agents 🧠📊
+# React + TypeScript + Vite
 
-Plataforma web para visualizar el estado, logs y métricas de rendimiento de todos los flujos de agentes de **Cool Solutions**.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## 🏗️ Arquitectura
+Currently, two official plugins are available:
 
-- **Frontend:** React / Next.js
-- **Comunicación:** API REST + WebSockets (tiempo real)
-- **Visualización:** Gráficos de latencia, consumo de tokens, flujo de conversación
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## 👥 Equipo del Proyecto
+## React Compiler
 
-| Agente | Modelo | Rol |
-|--------|--------|-----|
-| El Orquestador | ollama/glm-5.1 | CEO Virtual - Visión, auditoría y reportes |
-| PM Dashboard | ollama/llama3.1:8b | Gerente de Proyecto - Historias de Usuario, Sprints, QA |
-| SE Dashboard | ollama/qwen2.5-coder-32b | Software Engineer - Frontend/Backend |
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## 🔗 Cadena de Mando
+## Expanding the ESLint configuration
 
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
-Nico/Dante → El Orquestador → PM Dashboard → SE Dashboard
+
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
-
-## 📁 Estructura del Proyecto
-
-```
-Dashboard_Agents/
-├── src/
-│   ├── app/              # Next.js App Router
-│   ├── components/       # Componentes React
-│   ├── lib/              # Utilidades y clientes API
-│   └── styles/           # Estilos globales
-├── public/               # Assets estáticos
-├── docs/                 # Documentación del proyecto
-└── tests/                # Tests
-```
-
-## 🚀 Quick Start
-
-```bash
-npm install
-npm run dev
-```
-
----
-
-*Proyecto iniciado el 12 de Abril de 2026 por Cool Solutions*
