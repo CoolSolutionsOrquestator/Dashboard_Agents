@@ -14,6 +14,11 @@
 | 8 | Dante | Filtrar información por agente o modelo | Enfocar el monitoreo |
 | 9 | Dante | Datos mock simulados inicialmente | Prototipar sin datos reales |
 | 10 | Dante + Nico | Página clara y presentable con varias vistas | Uso interno profesional |
+| 11 | Dante | Tablero Kanban (Pendiente/En Progreso/Completado) | Mover historias y visualizar avance del sprint |
+| 12 | Dante | Disparar acciones desde el dashboard | Activar flujo operativo de agentes manualmente |
+| 13 | Dante | Vista "Grafo de Interacción" | Ver líneas de comunicación Orquestador→PM→Subagentes |
+| 14 | Nico | Rastro de mensajes (logs de chat) | Entender por qué se tomó una decisión técnica |
+| 15 | Equipo CS | Sistema preparado para producción (Cloud) | Conectar datos reales de OpenClaw |
 
 ## 🎯 Alcance del MVP
 
@@ -38,63 +43,55 @@
 - Costo por agente
 - Costo por modelo
 
-## 🚫 Fuera del alcance (por ahora)
-- Analítica avanzada
-- Historial complejo
-- Autenticación compleja
-- Auditoría completa
-- Trazabilidad entre agentes
-- Calendarios / To-do lists
-- Recomendaciones automáticas
-- Visualizaciones complejas
+### Vista Kanban (Nueva)
+- Columnas: Pendiente, En Progreso, Completado
+- Drag & Drop de historias de usuario
+- % de completitud del proyecto
+
+### Vista Agent Flow (Nueva)
+- Grafo/diagrama de interacción entre agentes
+- Orquestador → PM → Subagentes
+- Burbujas de estado (agente escribiendo = brilla)
+- Rastro de mensajes (logs de chat simplificados)
 
 ## 📅 Plan de Sprints
 
-### Sprint 1: Definición y Arquitectura ⬅️ ACTUAL
-**Objetivo:** Planificación completa antes de escribir una línea de código.
-- [ ] Definir estructura del proyecto
-- [ ] Definir subagentes y responsabilidades
-- [ ] Proponer stack tecnológico
-- [ ] Definir modelo de datos mock
-- [ ] Definir estructura de vistas (wireframe simple)
-- **Entregable:** Sprint Review con Dante/Nico — NO avanzar sin validación
+### Sprint 1: Definición y Arquitectura ✅ COMPLETADO
+### Sprint 2: Base Técnica + Dashboard Inicial ✅ COMPLETADO
+### Sprint 3: Vista de Agentes ✅ COMPLETADO
+### Sprint 4: Vista de Costos ✅ COMPLETADO
+### Sprint 5: Filtros y Mejoras ✅ COMPLETADO
 
-### Sprint 2: Base Técnica + Dashboard Inicial
-**Objetivo:** Tener algo funcional corriendo en localhost.
-- [ ] Levantar backend básico
-- [ ] Levantar frontend básico
-- [ ] Implementar datos mock
-- [ ] Construir vista Dashboard funcional
-- **Entregable:** Sprint Review mostrando dashboard funcionando
+### Sprint 6: Gestión de Sprints (Kanban Board) ⬅️ ACTUAL
+**Objetivo:** Crear la funcionalidad de gestión de tareas interna.
+- [ ] Implementar componente de Tablero Kanban
+- [ ] Lógica de Drag & Drop para mover historias entre estados
+- [ ] Integrar con resumen general (% de completitud del proyecto)
+- **Entregable:** Sprint Review — validar fluidez del tablero y estados
 
-### Sprint 3: Vista de Agentes
-**Objetivo:** Métricas por agente visibles y claras.
-- [ ] Implementar vista de agentes
-- [ ] Mostrar métricas por agente
-- [ ] Integrar con dashboard
-- **Entregable:** Sprint Review — validar claridad de la información
+### Sprint 7: Mapa de Interacción (Agent Flow)
+**Objetivo:** Visualizar el "sistema nervioso" de la agencia.
+- [ ] Crear vista de Interacción
+- [ ] Implementar grafo/diagrama: Orquestador → PM → Subagentes
+- [ ] Mostrar burbujas de estado en el grafo (agente escribiendo = brilla)
+- **Entregable:** Sprint Review — verificar si el mapa permite entender quién habla con quién
 
-### Sprint 4: Vista de Costos
-**Objetivo:** Control financiero claro.
-- [ ] Implementar desglose de costos
-- [ ] Costo por agente
-- [ ] Costo por modelo
-- **Entregable:** Sprint Review — validar que la info financiera sea clara
-
-### Sprint 5: Filtros y Mejoras
-**Objetivo:** MVP pulido y listo.
-- [ ] Agregar filtros básicos (agente, modelo)
-- [ ] Mejorar UI
-- [ ] Limpiar y ordenar el sistema
-- **Entregable:** Sprint Review final — evaluar siguientes pasos
+### Sprint 8: Control de Acciones y Deploy a Producción
+**Objetivo:** Pasar del mockup a la herramienta operativa.
+- [ ] Añadir botón "Disparar Acción" (Trigger) para iniciar procesos OpenClaw
+- [ ] Configuración de variables de entorno para producción
+- [ ] Preparar contenedor Docker o script deploy (Vercel/DigitalOcean)
+- [ ] Conexión preparada para API real de OpenClaw
+- **Entregable:** Sprint Review Final — MVP listo para producción
 
 ---
 
 ## 🔄 Regla de Oro
-- **Regla de Oro:** Ningún sprint avanza al siguiente sin Sprint Review aprobada por Dante o Nico.
+- **Ningún sprint avanza al siguiente sin Sprint Review aprobada por Dante o Nico.**
 
-## ✅ Sprint 1 - COMPLETADO (12 Abril 2026)
-- Stack: React + Vite + TypeScript + Tailwind + shadcn/ui + Recharts
-- Datos mock actualizados a modelos reales de Ollama Cloud
-- Capa de abstracción dataService.ts para reemplazo futuro de API
-- Aprobado por Nico con observaciones integradas
+## ✅ Sprints Completados
+- **Sprint 1** (12 Abril): Stack, modelo datos, wireframes
+- **Sprint 2** (12 Abril): Base técnica + Dashboard funcional
+- **Sprint 3** (12 Abril): Vista de Agentes con filtros y ordenamiento
+- **Sprint 4** (12 Abril): Vista de Costos con gráficos y desglose
+- **Sprint 5** (12 Abril): Filtros globales, alertas, pulido UI
