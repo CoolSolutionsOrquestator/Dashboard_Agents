@@ -3,7 +3,7 @@
 // Internamente lee de mockData, pero cuando se integre la API real,
 // solo se cambia este archivo.
 
-import type { Agent, Model, SystemMetrics, CostTimelinePoint, TokenActivityPoint, Story, SprintStats, FlowNode, FlowEdge, ChatLog } from '../types';
+import type { Agent, Model, SystemMetrics, CostTimelinePoint, TokenActivityPoint, Story, SprintStats, FlowNode, FlowEdge, ChatLog, ActionType, ActionExecution } from '../types';
 import {
   mockAgents,
   mockModels,
@@ -123,4 +123,119 @@ export async function getFlowEdges(): Promise<FlowEdge[]> {
 export async function getChatLogs(): Promise<ChatLog[]> {
   await delay();
   return mockChatLogs.map((l) => ({ ...l }));
+}
+
+// ─── Action Services ─────────────────────────────────────────────────────
+// TODO: Reemplazar con llamada real a OpenClaw API cuando se implemente el backend
+
+// In-memory action history
+let actionHistory: ActionExecution[] = [];
+let actionIdCounter = 0;
+
+function getNextActionId(): string {
+  actionIdCounter += 1;
+  return `action-${actionIdCounter}`;
+}
+
+/**
+ * Simula ejecutar una acción sobre un agente.
+ * Cambia el estado del agente en mockData y registra la acción en el historial.
+ */
+export async function executeAction(actionType: ActionType, agentId: string): Promise<ActionExecution> {
+  const agent = mockAgents.find((a) => a.id === agentId);
+  if (!agent) {
+    const execution: ActionExecution = {
+      id: getNextActionId(),
+      action: actionType,
+      agentId,
+      agentName: agentId,
+      timestamp: new Date().toISOString(),
+      status: 'failed',
+      message: `Agente ${agentId} no encontrado`,
+    };
+    actionHistory.unshift(execution);
+    return execution;
+  }
+
+  // Simulated delay (1-2 seconds)
+  const simulatedDelay = 1000 + Math.random() * 1000;
+  await delay(simulatedDelay);
+
+  // Determine new status based on action type
+  let newStatus: Agent['status'];
+  let message: string;
+
+  switch (actionType) {
+    case 'start':
+      newStatus = 'active';
+      message = `${agent.name} iniciado correctamente`;
+      break;
+    case 'stop':
+      newStatus = 'offline';
+      message = `${agent.name} detenido correctamente`;
+      break;
+    case 'restart':
+      newStatus = 'active';
+      message = `${agent.name} reiniciado correctamente`;
+      break;
+    case 'send_message':
+      newStatus = agent.status; // no status change
+      message = `Mensaje enviado a ${agent.name}`;
+      break;
+    default:
+      newStatus = agent.status;
+      message = `Acción ${actionType} ejecutada en ${agent.name}`;
+  }
+
+  // Update the agent's status in mockData
+  agent.status = newStatus;
+  agent.lastActive = new Date().toISOString();
+
+  // Also update mockFlowNodes if the agent exists there
+  const flowNode = mockFlowNodes.find((n) => n.id === agentId);
+  if (flowNode) {
+    flowNode.status = newStatus;
+    flowNode.lastActivity = new Date().toISOString();
+  }
+
+  // Also update mockSystemMetrics
+  mockSystemMetrics.activeAgents = mockAgents.filter((a) => a.status === 'active').length;
+  mockSystemMetrics.totalAgents = mockAgents.length;
+  mockSystemMetrics.lastUpdated = new Date().toISOString();
+
+  const execution: ActionExecution = {
+    id: getNextActionId(),
+    action: actionType,
+    agentId,
+    agentName: agent.name,
+    timestamp: new Date().toISOString(),
+    status: 'success',
+    message,
+  };
+
+  actionHistory.unshift(execution);
+  return execution;
+}
+
+/**
+ * Retorna el historial de acciones ejecutadas.
+ */
+export async function getActionHistory(): Promise<ActionExecution[]> {
+  await delay(100);
+  return [...actionHistory];
+}
+
+/**
+ * Ejecuta una acción sobre múltiples agentes (batch).
+ */
+export async function executeBatchAction(
+  actionType: ActionType,
+  agentIds: string[],
+): Promise<ActionExecution[]> {
+  const results: ActionExecution[] = [];
+  for (const agentId of agentIds) {
+    const result = await executeAction(actionType, agentId);
+    results.push(result);
+  }
+  return results;
 }

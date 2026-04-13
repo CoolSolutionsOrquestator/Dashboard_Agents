@@ -96,3 +96,26 @@ export interface ChatLog {
   timestamp: string;
   type: 'command' | 'report' | 'task' | 'review';
 }
+
+// ─── Action Types ────────────────────────────────────────────────────────
+
+export type ActionType = 'start' | 'stop' | 'restart' | 'send_message';
+
+export interface ActionButton {
+  id: string;
+  label: string;
+  action: ActionType;
+  icon: string; // lucide icon name
+  variant: 'primary' | 'danger' | 'warning' | 'default';
+  requiresConfirmation: boolean;
+}
+
+export interface ActionExecution {
+  id: string;
+  action: ActionType;
+  agentId: string;
+  agentName: string;
+  timestamp: string;
+  status: 'success' | 'pending' | 'failed';
+  message: string;
+}

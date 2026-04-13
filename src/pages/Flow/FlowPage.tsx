@@ -1,7 +1,10 @@
-import { useState } from 'react';
-import { GitBranch, Clock } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { GitBranch, Clock, Play, Square, RotateCcw, Loader2 } from 'lucide-react';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { showToast } from '../../components/ui/ToastContainer';
 import { useFlow } from '../../hooks/useFlow';
+import { useActions } from '../../hooks/useActions';
 import type { FlowNode, FlowEdge, ChatLog } from '../../types';
 
 // ─── Color map for edge types ────────────────────────────────────────────
@@ -25,12 +28,6 @@ const roleLabelMap: Record<FlowNode['role'], string> = {
   engineer: 'SE',
 };
 
-const roleRingMap: Record<FlowNode['role'], string> = {
-  orchestrator: 'ring-blue-500',
-  pm: 'ring-amber-500',
-  engineer: 'ring-emerald-500',
-};
-
 // ─── Relative time formatter ─────────────────────────────────────────────
 function relativeTime(isoDate: string): string {
   const now = Date.now();
@@ -45,21 +42,31 @@ function relativeTime(isoDate: string): string {
   return `hace ${diffD}d`;
 }
 
-// ─── Node positions (fixed layout: Orchestrator top, PMs middle, SEs bottom) ─
-// Layout grid: 3 rows, positions in percentages
+// ─── Node positions (fixed layout) ──────────────────────────────────────
 function getNodePosition(node: FlowNode): { x: number; y: number } {
   switch (node.id) {
-    case 'agent-1': return { x: 50, y: 10 };   // Orchestrator - top center
-    case 'agent-2': return { x: 28, y: 45 };   // PM Dashboard - mid left
-    case 'agent-4': return { x: 72, y: 45 };   // PM Ventas - mid right
-    case 'agent-3': return { x: 28, y: 80 };   // SE Dashboard - bottom left
-    case 'agent-5': return { x: 72, y: 80 };   // SE Ventas - bottom right
+    case 'agent-1': return { x: 50, y: 10 };
+    case 'agent-2': return { x: 28, y: 45 };
+    case 'agent-4': return { x: 72, y: 45 };
+    case 'agent-3': return { x: 28, y: 80 };
+    case 'agent-5': return { x: 72, y: 80 };
     default:       return { x: 50, y: 50 };
   }
 }
 
 // ─── FlowNode Card ───────────────────────────────────────────────────────
-function FlowNodeCard({ node, highlighted }: { node: FlowNode; highlighted: boolean }) {
+function FlowNodeCard({
+  node,
+  highlighted,
+  onAction,
+  isActionLoading,
+}: {
+  node: FlowNode;
+  highlighted: boolean;
+  onAction: (nodeId: string, action: 'start' | 'stop' | 'restart') => void;
+  isActionLoading: boolean;
+}) {
+  const [hovered, setHovered] = useState(false);
   const pos = getNodePosition(node);
   const isOffline = node.status === 'offline';
   const isError = node.status === 'error';
@@ -71,6 +78,18 @@ function FlowNodeCard({ node, highlighted }: { node: FlowNode; highlighted: bool
     ? 'border-green-500/50'
     : 'border-gray-700';
 
+  // Determine action button for this node's status
+  let actionBtn: { action: 'start' | 'stop' | 'restart'; label: string; icon: React.ReactNode; variant: string } | null = null;
+  if (node.status === 'active') {
+    actionBtn = { action: 'stop', label: 'Detener', icon: <Square className="h-3 w-3" />, variant: 'bg-red-600 hover:bg-red-700' };
+  } else if (node.status === 'idle') {
+    actionBtn = { action: 'start', label: 'Iniciar', icon: <Play className="h-3 w-3" />, variant: 'bg-blue-600 hover:bg-blue-700' };
+  } else if (node.status === 'offline') {
+    actionBtn = { action: 'start', label: 'Iniciar', icon: <Play className="h-3 w-3" />, variant: 'bg-blue-600 hover:bg-blue-700' };
+  } else if (node.status === 'error') {
+    actionBtn = { action: 'restart', label: 'Reiniciar', icon: <RotateCcw className="h-3 w-3" />, variant: 'bg-amber-600 hover:bg-amber-700' };
+  }
+
   return (
     <div
       style={{
@@ -78,7 +97,9 @@ function FlowNodeCard({ node, highlighted }: { node: FlowNode; highlighted: bool
         top: `${pos.y}%`,
         transform: 'translate(-50%, -50%)',
       }}
-      className={`absolute w-52 rounded-xl border bg-gray-900 p-3 shadow-lg transition-all duration-300 ${borderClass} ${highlighted ? 'ring-2 ring-blue-400 scale-105' : ''} ${isOffline ? 'opacity-40' : 'opacity-100'}`}
+      className={`absolute w-52 rounded-xl border bg-gray-900 p-3 shadow-lg transition-all duration-300 ${borderClass} ${highlighted ? 'ring-2 ring-blue-400 scale-105' : ''} ${isOffline ? 'opacity-60' : 'opacity-100'}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Breathing animation for active nodes */}
       {isActive && (
@@ -102,14 +123,100 @@ function FlowNodeCard({ node, highlighted }: { node: FlowNode; highlighted: bool
         💬 {node.lastMessage}
       </p>
       <p className="mt-1 text-[10px] text-gray-600">{relativeTime(node.lastActivity)}</p>
+
+      {/* Action button - appears on hover */}
+      {actionBtn && hovered && (
+        <div className="mt-2 border-t border-gray-800 pt-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAction(node.id, actionBtn!.action);
+            }}
+            disabled={isActionLoading}
+            className={`inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${actionBtn.variant}`}
+          >
+            {isActionLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              actionBtn.icon
+            )}
+            {actionBtn.label}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────
 export function FlowPage() {
-  const { nodes, edges, logs, loading } = useFlow();
+  const { nodes: initialNodes, edges, logs, loading } = useFlow();
+  const { startAgent, stopAgent, restartAgent, refreshHistory } = useActions();
+  const [nodes, setNodes] = useState(initialNodes);
+  const [loadingNodeId, setLoadingNodeId] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+
+  // Confirmation modal
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    variant: 'primary' | 'danger' | 'warning';
+    onConfirm: () => void;
+  }>({ open: false, title: '', message: '', variant: 'danger', onConfirm: () => {} });
+
+  // Refresh nodes when initial data changes
+  useMemo(() => {
+    setNodes(initialNodes);
+  }, [initialNodes]);
+
+  const handleNodeAction = useCallback(async (nodeId: string, action: 'start' | 'stop' | 'restart') => {
+    const node = nodes.find((n) => n.id === nodeId);
+    const nodeName = node?.name ?? nodeId;
+    const actionLabels: Record<string, string> = {
+      start: 'iniciar',
+      stop: 'detener',
+      restart: 'reiniciar',
+    };
+    const confirmVariants: Record<string, 'primary' | 'danger' | 'warning'> = {
+      start: 'primary',
+      stop: 'danger',
+      restart: 'warning',
+    };
+
+    setConfirmModal({
+      open: true,
+      title: `¿${actionLabels[action].charAt(0).toUpperCase() + actionLabels[action].slice(1)} ${nodeName}?`,
+      message: `¿Estás seguro de que deseás ${actionLabels[action]} el agente "${nodeName}"?`,
+      variant: confirmVariants[action],
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, open: false }));
+        setLoadingNodeId(nodeId);
+        try {
+          const actionFn = action === 'start' ? startAgent : action === 'stop' ? stopAgent : restartAgent;
+          const result = await actionFn(nodeId);
+          if (result) {
+            showToast(result.message, result.status === 'success' ? 'success' : 'error');
+            // Update the node status locally
+            setNodes((prev) =>
+              prev.map((n) =>
+                n.id === nodeId
+                  ? {
+                      ...n,
+                      status: action === 'start' ? 'active' : action === 'stop' ? 'offline' : 'active',
+                      lastActivity: new Date().toISOString(),
+                    }
+                  : n,
+              ),
+            );
+          }
+          await refreshHistory();
+        } finally {
+          setLoadingNodeId(null);
+        }
+      },
+    });
+  }, [nodes, startAgent, stopAgent, restartAgent, refreshHistory]);
 
   if (loading) {
     return (
@@ -119,10 +226,8 @@ export function FlowPage() {
     );
   }
 
-  // Build a lookup for agent names
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
-  // Determine which node IDs are part of the selected edge
   const highlightedNodes = new Set<string>();
   if (selectedEdge) {
     const edge = edges.find((e) => e.id === selectedEdge);
@@ -132,24 +237,20 @@ export function FlowPage() {
     }
   }
 
-  // SVG edge computation
   function getEdgePath(edge: FlowEdge) {
     const fromNode = nodes.find((n) => n.id === edge.from);
     const toNode = nodes.find((n) => n.id === edge.to);
     if (!fromNode || !toNode) return '';
     const from = getNodePosition(fromNode);
     const to = getNodePosition(toNode);
-    // Curved path for bidirectional edges that share same node pair
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     const isReverse = edges.some(
       (e) => e.from === edge.to && e.to === edge.from && e.id < edge.id,
     );
-    // Offset for parallel edges
     const offset = isReverse ? -4 : 4;
     const midX = (from.x + to.x) / 2;
     const midY = (from.y + to.y) / 2;
-    // Control point offset perpendicular to the line
     const len = Math.sqrt(dx * dx + dy * dy);
     const nx = len > 0 ? -dy / len : 0;
     const ny = len > 0 ? dx / len : 0;
@@ -158,7 +259,6 @@ export function FlowPage() {
     return `M ${from.x} ${from.y} Q ${cx} ${cy} ${to.x} ${to.y}`;
   }
 
-  // Edge label position (midpoint of the curve)
   function getEdgeLabelPos(edge: FlowEdge) {
     const fromNode = nodes.find((n) => n.id === edge.from);
     const toNode = nodes.find((n) => n.id === edge.to);
@@ -179,24 +279,9 @@ export function FlowPage() {
     return { x: midX + nx * offset, y: midY + ny * offset };
   }
 
-  // Arrow head position (near target)
-  function getArrowPos(edge: FlowEdge) {
-    const toNode = nodes.find((n) => n.id === edge.to);
-    if (!toNode) return { x: 0, y: 0 };
-    const to = getNodePosition(toNode);
-    const fromNode = nodes.find((n) => n.id === edge.from);
-    if (!fromNode) return to;
-    const from = getNodePosition(fromNode);
-    // Position arrow 12% away from target (so it doesn't overlap the node card)
-    const t = 0.85;
-    return {
-      x: from.x + (to.x - from.x) * t,
-      y: from.y + (to.y - from.y) * t,
-    };
-  }
+
 
   function handleLogClick(log: ChatLog) {
-    // Find the edge that matches this log's from→to and type
     const match = edges.find(
       (e) => e.from === log.fromAgent && e.to === log.toAgent,
     );
@@ -291,6 +376,8 @@ export function FlowPage() {
               key={node.id}
               node={node}
               highlighted={highlightedNodes.has(node.id)}
+              onAction={handleNodeAction}
+              isActionLoading={loadingNodeId === node.id}
             />
           ))}
         </div>
@@ -384,8 +471,18 @@ export function FlowPage() {
       {/* Footer */}
       <div className="flex items-center gap-2 text-xs text-gray-600">
         <GitBranch className="h-4 w-4" />
-        <span>Agent Flow — Sprint 7 · Cool Solutions</span>
+        <span>Agent Flow — Sprint 8 · Cool Solutions</span>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        open={confirmModal.open}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   );
 }

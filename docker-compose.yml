@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  dashboard:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:3001/api}

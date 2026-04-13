@@ -1,10 +1,13 @@
-import { useState, useMemo } from 'react';
-import { Filter, ArrowUpDown, ArrowUp, ArrowDown, Bot, Search } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Filter, ArrowUpDown, ArrowUp, ArrowDown, Bot, Search, Play, Square, RotateCcw, Loader2 } from 'lucide-react';
 import { useAgents } from '../../hooks/useAgents';
+import { useActions } from '../../hooks/useActions';
 import { useModels } from '../../hooks/useModels';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { showToast } from '../../components/ui/ToastContainer';
 import { formatTokens, formatCost, formatRelativeTime } from '../../utils/format';
-import type { AgentStatus } from '../../types';
+import type { AgentStatus, Agent } from '../../types';
 
 type SortField = 'totalTokens' | 'totalCost';
 type SortDir = 'asc' | 'desc';
@@ -17,9 +20,47 @@ const STATUS_OPTIONS: { value: AgentStatus | 'all'; label: string }[] = [
   { value: 'error', label: 'Error' },
 ];
 
+// Action buttons config based on agent status
+function getActionButtons(agent: Agent) {
+  const buttons: { action: 'start' | 'stop' | 'restart'; label: string; icon: React.ReactNode; variant: 'primary' | 'danger' | 'warning' }[] = [];
+
+  switch (agent.status) {
+    case 'active':
+      buttons.push({ action: 'stop', label: 'Detener', icon: <Square className="h-3.5 w-3.5" />, variant: 'danger' });
+      break;
+    case 'idle':
+      buttons.push({ action: 'start', label: 'Iniciar', icon: <Play className="h-3.5 w-3.5" />, variant: 'primary' });
+      buttons.push({ action: 'stop', label: 'Detener', icon: <Square className="h-3.5 w-3.5" />, variant: 'danger' });
+      break;
+    case 'offline':
+      buttons.push({ action: 'start', label: 'Iniciar', icon: <Play className="h-3.5 w-3.5" />, variant: 'primary' });
+      break;
+    case 'error':
+      buttons.push({ action: 'restart', label: 'Reiniciar', icon: <RotateCcw className="h-3.5 w-3.5" />, variant: 'warning' });
+      break;
+  }
+
+  return buttons;
+}
+
+const variantStyles: Record<string, string> = {
+  primary: 'bg-blue-600 hover:bg-blue-700 text-white',
+  danger: 'bg-red-600/80 hover:bg-red-600 text-white',
+  warning: 'bg-amber-600/80 hover:bg-amber-600 text-white',
+};
+
 export function AgentsPage() {
-  const { agents, loading: agentsLoading, error: agentsError } = useAgents();
+  const { agents: initialAgents, loading: agentsLoading, error: agentsError } = useAgents();
+  const { loadingAgents, startAgent, stopAgent, restartAgent, refreshAgents } = useActions();
   const { models, loading: modelsLoading } = useModels();
+
+  // Local agents state that gets refreshed after actions
+  const [agents, setAgents] = useState<Agent[]>(initialAgents);
+
+  // Refresh local state when initial data changes
+  useMemo(() => {
+    setAgents(initialAgents);
+  }, [initialAgents]);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<AgentStatus | 'all'>('all');
@@ -30,6 +71,15 @@ export function AgentsPage() {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
+  // Confirmation modal
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    variant: 'primary' | 'danger' | 'warning';
+    onConfirm: () => void;
+  }>({ open: false, title: '', message: '', variant: 'danger', onConfirm: () => {} });
+
   const modelOptions = useMemo(() => {
     const opts = [{ value: 'all', label: 'Todos' }];
     for (const m of models) {
@@ -38,7 +88,6 @@ export function AgentsPage() {
     return opts;
   }, [models]);
 
-  // Build modelId → name map
   const modelNameMap = useMemo(() => {
     const map: Record<string, string> = {};
     for (const m of models) {
@@ -47,7 +96,6 @@ export function AgentsPage() {
     return map;
   }, [models]);
 
-  // Filtered + sorted agents
   const displayedAgents = useMemo(() => {
     let filtered = [...agents];
 
@@ -77,7 +125,6 @@ export function AgentsPage() {
       if (sortDir === 'desc') {
         setSortDir('asc');
       } else {
-        // Third click: reset sort
         setSortField(null);
         setSortDir('desc');
       }
@@ -97,6 +144,37 @@ export function AgentsPage() {
       <ArrowUp className="ml-1 h-3.5 w-3.5 text-blue-400" />
     );
   }
+
+  const handleAction = useCallback(async (agent: Agent, action: 'start' | 'stop' | 'restart') => {
+    const actionLabels: Record<string, string> = {
+      start: 'iniciar',
+      stop: 'detener',
+      restart: 'reiniciar',
+    };
+    const confirmVariant: Record<string, 'primary' | 'danger' | 'warning'> = {
+      start: 'primary',
+      stop: 'danger',
+      restart: 'warning',
+    };
+
+    setConfirmModal({
+      open: true,
+      title: `¿${actionLabels[action].charAt(0).toUpperCase() + actionLabels[action].slice(1)} ${agent.name}?`,
+      message: `¿Estás seguro de que deseás ${actionLabels[action]} el agente "${agent.name}"?`,
+      variant: confirmVariant[action],
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, open: false }));
+        const actionFn = action === 'start' ? startAgent : action === 'stop' ? stopAgent : restartAgent;
+        const result = await actionFn(agent.id);
+        if (result) {
+          showToast(result.message, result.status === 'success' ? 'success' : 'error');
+          // Refresh agents list to get updated statuses
+          const updated = await refreshAgents();
+          setAgents(updated);
+        }
+      },
+    });
+  }, [startAgent, stopAgent, restartAgent, refreshAgents]);
 
   const isLoading = agentsLoading || modelsLoading;
 
@@ -119,7 +197,6 @@ export function AgentsPage() {
           <span>Filtros:</span>
         </div>
 
-        {/* Status Filter */}
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as AgentStatus | 'all')}
@@ -132,7 +209,6 @@ export function AgentsPage() {
           ))}
         </select>
 
-        {/* Model Filter */}
         <select
           value={modelFilter}
           onChange={(e) => setModelFilter(e.target.value)}
@@ -145,7 +221,6 @@ export function AgentsPage() {
           ))}
         </select>
 
-        {/* Search Input */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <input
@@ -157,7 +232,6 @@ export function AgentsPage() {
           />
         </div>
 
-        {/* Active filter count */}
         {(statusFilter !== 'all' || modelFilter !== 'all' || searchQuery.trim() !== '') && (
           <button
             onClick={() => {
@@ -215,14 +289,16 @@ export function AgentsPage() {
                 <th className="whitespace-nowrap px-6 py-3.5 font-medium text-gray-400">
                   Última Actividad
                 </th>
+                <th className="whitespace-nowrap px-6 py-3.5 font-medium text-gray-400">
+                  Acciones
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/50">
               {isLoading ? (
-                // Loading skeleton
                 Array.from({ length: 5 }, (_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 6 }, (_, j) => (
+                    {Array.from({ length: 7 }, (_, j) => (
                       <td key={j} className="px-6 py-4">
                         <div className="h-4 w-24 animate-pulse rounded bg-gray-800" />
                       </td>
@@ -230,9 +306,8 @@ export function AgentsPage() {
                   </tr>
                 ))
               ) : displayedAgents.length === 0 ? (
-                // Empty state
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center">
+                  <td colSpan={7} className="px-6 py-16 text-center">
                     <Bot className="mx-auto mb-3 h-10 w-10 text-gray-600" />
                     <p className="text-sm text-gray-400">
                       No se encontraron agentes con los filtros seleccionados
@@ -240,50 +315,83 @@ export function AgentsPage() {
                   </td>
                 </tr>
               ) : (
-                displayedAgents.map((agent) => (
-                  <tr
-                    key={agent.id}
-                    className="transition-colors hover:bg-gray-800/50"
-                  >
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                          <Bot className="h-4 w-4 text-blue-400" />
+                displayedAgents.map((agent) => {
+                  const actionBtns = getActionButtons(agent);
+                  const isAgentLoading = loadingAgents[agent.id];
+
+                  return (
+                    <tr
+                      key={agent.id}
+                      className="transition-colors hover:bg-gray-800/50"
+                    >
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+                            <Bot className="h-4 w-4 text-blue-400" />
+                          </div>
+                          <span className="font-medium text-gray-100">
+                            {agent.name}
+                          </span>
                         </div>
-                        <span className="font-medium text-gray-100">
-                          {agent.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-gray-300">
-                      {modelNameMap[agent.modelId] ?? agent.modelId}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <StatusBadge status={agent.status} />
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 font-mono text-gray-300">
-                      {formatTokens(agent.totalTokens)}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 font-mono text-gray-300">
-                      {formatCost(agent.totalCost)}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-gray-400">
-                      {formatRelativeTime(agent.lastActive)}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-gray-300">
+                        {modelNameMap[agent.modelId] ?? agent.modelId}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <StatusBadge status={agent.status} />
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 font-mono text-gray-300">
+                        {formatTokens(agent.totalTokens)}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 font-mono text-gray-300">
+                        {formatCost(agent.totalCost)}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-gray-400">
+                        {formatRelativeTime(agent.lastActive)}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {actionBtns.map((btn) => (
+                            <button
+                              key={btn.action}
+                              onClick={() => handleAction(agent, btn.action)}
+                              disabled={isAgentLoading}
+                              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${variantStyles[btn.variant]}`}
+                            >
+                              {isAgentLoading ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                btn.icon
+                              )}
+                              {btn.label}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Footer with count */}
         {!isLoading && displayedAgents.length > 0 && (
           <div className="border-t border-gray-800 bg-gray-900/60 px-6 py-3 text-xs text-gray-500">
             Mostrando {displayedAgents.length} de {agents.length} agentes
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        open={confirmModal.open}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   );
 }

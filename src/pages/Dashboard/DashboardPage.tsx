@@ -1,12 +1,17 @@
-import { useMemo } from 'react';
-import { DollarSign, Bot, Zap, AlertTriangle } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { DollarSign, Bot, Zap, AlertTriangle, Play, Square, RotateCcw } from 'lucide-react';
 import { MetricCard } from '../../components/ui/MetricCard';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { ActionLog } from '../../components/ui/ActionLog';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { showToast } from '../../components/ui/ToastContainer';
 import { TokenActivityChart } from '../../components/charts/TokenActivityChart';
 import { useMetrics } from '../../hooks/useMetrics';
 import { useAgents } from '../../hooks/useAgents';
 import { useTokenActivity } from '../../hooks/useTokenActivity';
+import { useActions } from '../../hooks/useActions';
 import { formatTokens, formatCost } from '../../utils/format';
+import type { Agent } from '../../types';
 
 interface Alert {
   id: string;
@@ -16,15 +21,30 @@ interface Alert {
 
 export function DashboardPage() {
   const { metrics, loading: metricsLoading } = useMetrics();
-  const { agents, loading: agentsLoading } = useAgents();
+  const { agents: initialAgents, loading: agentsLoading } = useAgents();
   const { activity, loading: activityLoading } = useTokenActivity();
+  const { actionHistory, startAll, stopIdle, restartErrors, batchLoading, refreshAgents } = useActions();
+
+  const [agents, setAgents] = useState<Agent[]>(initialAgents);
+
+  // Refresh local state when initial data changes
+  useMemo(() => {
+    setAgents(initialAgents);
+  }, [initialAgents]);
+
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    variant: 'primary' | 'danger' | 'warning';
+    onConfirm: () => void;
+  }>({ open: false, title: '', message: '', variant: 'danger', onConfirm: () => {} });
 
   const topAgents = useMemo(
     () => [...agents].sort((a, b) => b.totalTokens - a.totalTokens).slice(0, 3),
-    [agents]
+    [agents],
   );
 
-  // Dynamic subtitle for Active Agents card
   const activeAgentsSubtitle = useMemo(() => {
     if (agentsLoading || agents.length === 0) return '';
     const counts: Record<string, number> = {};
@@ -40,7 +60,6 @@ export function DashboardPage() {
     return parts.length > 0 ? parts.join(' · ') : 'Todos activos';
   }, [agents, agentsLoading]);
 
-  // Dynamic alerts
   const alerts = useMemo<Alert[]>(() => {
     const result: Alert[] = [];
     const now = Date.now();
@@ -66,6 +85,62 @@ export function DashboardPage() {
     }
     return result;
   }, [agents]);
+
+  const handleBatchAction = useCallback(async (
+    action: 'startAll' | 'stopIdle' | 'restartErrors',
+  ) => {
+    const configs = {
+      startAll: {
+        title: '¿Iniciar todos los agentes?',
+        message: 'Esto cambiará todos los agentes a estado "activo". ¿Continuar?',
+        variant: 'primary' as const,
+        label: 'Iniciar Todos',
+      },
+      stopIdle: {
+        title: '¿Detener agentes inactivos?',
+        message: 'Esto cambiará todos los agentes "idle" a "offline". ¿Continuar?',
+        variant: 'danger' as const,
+        label: 'Detener Inactivos',
+      },
+      restartErrors: {
+        title: '¿Reiniciar agentes con error?',
+        message: 'Esto reiniciará todos los agentes en estado "error". ¿Continuar?',
+        variant: 'warning' as const,
+        label: 'Reiniciar Errores',
+      },
+    };
+
+    const config = configs[action];
+
+    setConfirmModal({
+      open: true,
+      title: config.title,
+      message: config.message,
+      variant: config.variant,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, open: false }));
+        try {
+          const results = action === 'startAll'
+            ? await startAll()
+            : action === 'stopIdle'
+            ? await stopIdle()
+            : await restartErrors();
+
+          if (results.length === 0) {
+            showToast('No hay agentes para esta acción', 'info');
+          } else {
+            const successCount = results.filter((r) => r.status === 'success').length;
+            showToast(`${successCount} agente(s) actualizado(s)`, 'success');
+          }
+
+          const updated = await refreshAgents();
+          setAgents(updated);
+        } catch {
+          showToast('Error al ejecutar la acción', 'error');
+        }
+      },
+    });
+  }, [startAll, stopIdle, restartErrors, refreshAgents]);
 
   return (
     <div className="space-y-6">
@@ -107,12 +182,10 @@ export function DashboardPage() {
 
       {/* Chart + Top Agents */}
       <div className="grid gap-6 lg:grid-cols-5">
-        {/* Token Activity Chart - 3 cols */}
         <div className="lg:col-span-3">
           <TokenActivityChart data={activity} loading={activityLoading} />
         </div>
 
-        {/* Top Agents - 2 cols */}
         <div className="lg:col-span-2">
           <div className="rounded-xl border border-gray-800 bg-gray-900 p-6">
             <h3 className="mb-1 text-lg font-semibold">Top Agentes</h3>
@@ -121,10 +194,7 @@ export function DashboardPage() {
             {agentsLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-14 animate-pulse rounded-lg bg-gray-800"
-                  />
+                  <div key={i} className="h-14 animate-pulse rounded-lg bg-gray-800" />
                 ))}
               </div>
             ) : (
@@ -181,6 +251,56 @@ export function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Quick Actions Section */}
+      <div className="rounded-xl border border-gray-800 bg-gray-900 p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <Zap className="h-5 w-5 text-blue-400" />
+          <h3 className="text-lg font-semibold">Acciones Rápidas</h3>
+        </div>
+        <p className="mb-4 text-sm text-gray-400">
+          Ejecuta acciones masivas sobre todos los agentes
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => handleBatchAction('startAll')}
+            disabled={batchLoading}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Play className="h-4 w-4" />
+            Iniciar Todos
+          </button>
+          <button
+            onClick={() => handleBatchAction('stopIdle')}
+            disabled={batchLoading}
+            className="inline-flex items-center gap-2 rounded-lg bg-red-600/80 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Square className="h-4 w-4" />
+            Detener Inactivos
+          </button>
+          <button
+            onClick={() => handleBatchAction('restartErrors')}
+            disabled={batchLoading}
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-600/80 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Reiniciar Errores
+          </button>
+        </div>
+      </div>
+
+      {/* Action Log */}
+      <ActionLog history={actionHistory} />
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        open={confirmModal.open}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   );
 }

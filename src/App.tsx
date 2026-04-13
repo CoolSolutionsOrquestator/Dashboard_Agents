@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
+import { ToastContainer } from './components/ui/ToastContainer';
 import { DashboardPage } from './pages/Dashboard/DashboardPage';
 import { AgentsPage } from './pages/Agents/AgentsPage';
 import { SprintsPage } from './pages/Sprints/SprintsPage';
@@ -18,6 +19,7 @@ function App() {
           <Route path="/costs" element={<CostsPage />} />
         </Route>
       </Routes>
+      <ToastContainer />
     </BrowserRouter>
   );
 }
