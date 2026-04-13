@@ -40,3 +40,28 @@ export interface TokenActivityPoint {
   date: string;
   tokens: number;
 }
+
+// Sprint / Kanban Types
+
+export type StoryStatus = 'pending' | 'in_progress' | 'completed';
+
+export type StoryPriority = 'low' | 'medium' | 'high';
+
+export interface Story {
+  id: string;
+  title: string;
+  description: string;
+  status: StoryStatus;
+  assignee: string;
+  priority: StoryPriority;
+  sprintNumber: number;
+}
+
+export interface SprintStats {
+  sprintNumber: number;
+  total: number;
+  completed: number;
+  inProgress: number;
+  pending: number;
+  percentComplete: number;
+}

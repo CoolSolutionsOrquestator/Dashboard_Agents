@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { DashboardPage } from './pages/Dashboard/DashboardPage';
 import { AgentsPage } from './pages/Agents/AgentsPage';
+import { SprintsPage } from './pages/Sprints/SprintsPage';
 import { CostsPage } from './pages/Costs/CostsPage';
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
         <Route element={<AppShell />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/sprints" element={<SprintsPage />} />
           <Route path="/costs" element={<CostsPage />} />
         </Route>
       </Routes>

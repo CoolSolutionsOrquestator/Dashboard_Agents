@@ -3,7 +3,7 @@
 // Internamente lee de mockData, pero cuando se integre la API real,
 // solo se cambia este archivo.
 
-import type { Agent, Model, SystemMetrics, CostTimelinePoint, TokenActivityPoint } from '../types';
+import type { Agent, Model, SystemMetrics, CostTimelinePoint, TokenActivityPoint, Story, SprintStats } from '../types';
 import {
   mockAgents,
   mockModels,
@@ -11,6 +11,7 @@ import {
   mockCostTimeline,
   mockTokenActivity,
 } from '../data/mockData';
+import { mockStories } from '../data/mockSprints';
 
 // Simula latencia de red para emular llamadas asíncronas
 const delay = (ms: number = 300) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -70,4 +71,38 @@ export async function getCosts(): Promise<{
     byModel,
     byAgent,
   };
+}
+
+// ─── Sprint / Kanban Services ────────────────────────────────────────────
+
+export async function getStories(): Promise<Story[]> {
+  await delay();
+  return mockStories.map((s) => ({ ...s }));
+}
+
+export async function getStoriesBySprint(sprintNumber: number): Promise<Story[]> {
+  await delay();
+  return mockStories.filter((s) => s.sprintNumber === sprintNumber).map((s) => ({ ...s }));
+}
+
+export async function getSprintStats(): Promise<SprintStats[]> {
+  await delay();
+  const sprintNumbers = [...new Set(mockStories.map((s) => s.sprintNumber))].sort(
+    (a, b) => a - b,
+  );
+  return sprintNumbers.map((sn) => {
+    const stories = mockStories.filter((s) => s.sprintNumber === sn);
+    const total = stories.length;
+    const completed = stories.filter((s) => s.status === 'completed').length;
+    const inProgress = stories.filter((s) => s.status === 'in_progress').length;
+    const pending = stories.filter((s) => s.status === 'pending').length;
+    return {
+      sprintNumber: sn,
+      total,
+      completed,
+      inProgress,
+      pending,
+      percentComplete: total > 0 ? Math.round((completed / total) * 100) : 0,
+    };
+  });
 }

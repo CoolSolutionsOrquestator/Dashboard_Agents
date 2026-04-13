@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
   Bot,
+  Columns,
   DollarSign,
   Activity,
   Menu,
@@ -12,6 +13,7 @@ import { useState } from 'react';
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/agents', label: 'Agentes', icon: Bot },
+  { to: '/sprints', label: 'Sprints', icon: Columns },
   { to: '/costs', label: 'Costos', icon: DollarSign },
 ];
 
