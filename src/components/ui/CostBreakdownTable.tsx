@@ -38,6 +38,16 @@ export function CostBreakdownTable({ models, byModel, loading }: CostBreakdownTa
     );
   }
 
+  if (byModel.length === 0) {
+    return (
+      <div className="rounded-xl border border-gray-800 bg-gray-900 p-6">
+        <h3 className="mb-1 text-lg font-semibold">Desglose por Modelo</h3>
+        <p className="mb-4 text-sm text-gray-400">Detalle de costos y tokens</p>
+        <p className="text-sm text-gray-500">No hay datos para los filtros seleccionados</p>
+      </div>
+    );
+  }
+
   // Merge model info with cost data
   const rows: EnrichedRow[] = byModel.map((bm) => {
     const model = models.find((m) => m.id === bm.modelId);

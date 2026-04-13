@@ -1,5 +1,4 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import type { Payload } from 'recharts/types/component/DefaultLegendContent';
 
 interface ModelCostData {
   modelId: string;
@@ -77,13 +76,13 @@ export function CostModelPieChart({ data, loading }: CostModelPieChartProps) {
     );
   };
 
-  const renderLegend = (props: { payload?: Payload[] }) => {
-    const { payload } = props;
-    if (!payload) return null;
+  const renderLegend = (props: any) => {
+    const payload: any[] = props?.payload ?? [];
+    if (!payload.length) return null;
     return (
       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-        {payload.map((entry, index) => (
-          <div key={entry.value} className="flex items-center gap-1.5 text-xs">
+        {payload.map((entry: any, index: number) => (
+          <div key={entry.value ?? index} className="flex items-center gap-1.5 text-xs">
             <span
               className="inline-block h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: COLORS[index % COLORS.length] }}
@@ -113,7 +112,7 @@ export function CostModelPieChart({ data, loading }: CostModelPieChartProps) {
             outerRadius={95}
             paddingAngle={2}
             dataKey="value"
-            label={renderCustomLabel}
+            label={renderCustomLabel as any}
             labelLine={false}
             strokeWidth={0}
           >
@@ -133,14 +132,15 @@ export function CostModelPieChart({ data, loading }: CostModelPieChartProps) {
               color: '#f3f4f6',
               fontSize: '13px',
             }}
-            formatter={(value: number, name: string) => {
-              const pct = ((value / total) * 100).toFixed(1);
+            formatter={(value: any, name: any) => {
+              const numVal = Number(value);
+              const pct = ((numVal / total) * 100).toFixed(1);
               return hasCosts
-                ? [`${formatCost(value)} (${pct}%)`, name]
-                : [`${value.toLocaleString()} tokens (${pct}%)`, name];
+                ? [`${formatCost(numVal)} (${pct}%)`, name]
+                : [`${numVal.toLocaleString()} tokens (${pct}%)`, name];
             }}
           />
-          <Legend content={renderLegend} />
+          <Legend content={renderLegend as any} />
         </PieChart>
       </ResponsiveContainer>
     </div>

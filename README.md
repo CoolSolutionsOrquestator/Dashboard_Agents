@@ -1,73 +1,67 @@
-# React + TypeScript + Vite
+# Dashboard Agents
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Dashboard de monitoreo de agentes IA para **Cool Solutions**. Permite visualizar en tiempo real el estado, consumo de tokens y costos de los agentes OpenClaw.
 
-Currently, two official plugins are available:
+## Vistas
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Vista | Ruta | Descripción |
+|-------|------|-------------|
+| **Dashboard** | `/` | Resumen general: métricas clave, actividad de tokens, top agentes y alertas del sistema |
+| **Agentes** | `/agents` | Directorio completo de agentes con filtros por estado, modelo y búsqueda por nombre |
+| **Costos** | `/costs` | Análisis de costos: distribución por modelo, top agentes por costo, desglose detallado con filtros |
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **React 19** + **Vite 8** + **TypeScript 6**
+- **Tailwind CSS 4** para estilos
+- **Recharts 3** para gráficos (área, pie, barras)
+- **Lucide React** para iconografía
+- **React Router 7** para navegación SPA
 
-## Expanding the ESLint configuration
+## Cómo correr
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# Instalar dependencias
+npm install
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Iniciar servidor de desarrollo
+npm run dev
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+# Build de producción
+npm run build
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Preview del build
+npm run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+El servidor de desarrollo se levanta en `http://localhost:5173` por defecto.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Estructura del proyecto
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+src/
+├── components/
+│   ├── charts/        # Componentes de Recharts (TokenActivity, PieChart, BarChart)
+│   ├── layout/        # AppShell con sidebar y navegación
+│   └── ui/            # MetricCard, StatusBadge, CostBreakdownTable
+├── data/              # Datos mock (mockData.ts)
+├── hooks/             # Custom hooks (useAgents, useCosts, useMetrics, etc.)
+├── pages/             # Vistas principales (Dashboard, Agents, Costs)
+├── services/          # Capa de datos (dataService.ts) — reemplazar para conectar API real
+├── types/             # Definiciones TypeScript
+└── utils/             # Utilidades de formateo
+```
+
+## Datos
+
+El MVP usa datos mock en `src/data/mockData.ts`. Toda la data se consume a través de `src/services/dataService.ts` (patrón Adapter), por lo que para conectar una API real solo se necesita modificar ese archivo.
+
+## Funcionalidades
+
+- **Métricas en tiempo real**: Costo total, agentes activos, tokens consumidos
+- **Gráficos interactivos**: Consumo de tokens por día, distribución por modelo, top agentes
+- **Alertas dinámicas**: Agentes en estado error o sin actividad por +24h
+- **Filtros**: Por estado, modelo, nombre de agente y rango de tiempo
+- **Ordenamiento**: Por tokens y costo en la vista de agentes
+- **Responsive**: Sidebar colapsa en mobile, tablas con scroll horizontal
+- **Loading skeletons**: Estados de carga animados en todas las vistas

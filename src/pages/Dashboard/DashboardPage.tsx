@@ -1,19 +1,17 @@
-import { DollarSign, Bot, Zap } from 'lucide-react';
+import { useMemo } from 'react';
+import { DollarSign, Bot, Zap, AlertTriangle } from 'lucide-react';
 import { MetricCard } from '../../components/ui/MetricCard';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { TokenActivityChart } from '../../components/charts/TokenActivityChart';
 import { useMetrics } from '../../hooks/useMetrics';
 import { useAgents } from '../../hooks/useAgents';
 import { useTokenActivity } from '../../hooks/useTokenActivity';
+import { formatTokens, formatCost } from '../../utils/format';
 
-function formatTokens(tokens: number): string {
-  if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(2)}M`;
-  if (tokens >= 1000) return `${(tokens / 1000).toFixed(0)}K`;
-  return tokens.toString();
-}
-
-function formatCost(cost: number): string {
-  return `$${cost.toFixed(2)}`;
+interface Alert {
+  id: string;
+  message: string;
+  severity: 'error' | 'warning';
 }
 
 export function DashboardPage() {
@@ -21,7 +19,53 @@ export function DashboardPage() {
   const { agents, loading: agentsLoading } = useAgents();
   const { activity, loading: activityLoading } = useTokenActivity();
 
-  const topAgents = [...agents].sort((a, b) => b.totalTokens - a.totalTokens).slice(0, 3);
+  const topAgents = useMemo(
+    () => [...agents].sort((a, b) => b.totalTokens - a.totalTokens).slice(0, 3),
+    [agents]
+  );
+
+  // Dynamic subtitle for Active Agents card
+  const activeAgentsSubtitle = useMemo(() => {
+    if (agentsLoading || agents.length === 0) return '';
+    const counts: Record<string, number> = {};
+    for (const a of agents) {
+      if (a.status !== 'active') {
+        counts[a.status] = (counts[a.status] || 0) + 1;
+      }
+    }
+    const parts: string[] = [];
+    if (counts.idle) parts.push(`${counts.idle} idle`);
+    if (counts.offline) parts.push(`${counts.offline} offline`);
+    if (counts.error) parts.push(`${counts.error} error`);
+    return parts.length > 0 ? parts.join(' · ') : 'Todos activos';
+  }, [agents, agentsLoading]);
+
+  // Dynamic alerts
+  const alerts = useMemo<Alert[]>(() => {
+    const result: Alert[] = [];
+    const now = Date.now();
+    const H24 = 24 * 60 * 60 * 1000;
+    for (const a of agents) {
+      if (a.status === 'error') {
+        result.push({
+          id: `error-${a.id}`,
+          message: `${a.name} en estado error`,
+          severity: 'error',
+        });
+      }
+      if (a.status === 'offline') {
+        const lastActive = new Date(a.lastActive).getTime();
+        if (now - lastActive > H24) {
+          result.push({
+            id: `offline-${a.id}`,
+            message: `${a.name} sin actividad hace más de 24h`,
+            severity: 'warning',
+          });
+        }
+      }
+    }
+    return result;
+  }, [agents]);
 
   return (
     <div className="space-y-6">
@@ -49,7 +93,7 @@ export function DashboardPage() {
               ? '...'
               : `${metrics?.activeAgents} / ${metrics?.totalAgents}`
           }
-          subtitle="2 idle · 1 offline · 1 error"
+          subtitle={activeAgentsSubtitle}
           icon={<Bot className="h-5 w-5" />}
         />
         <MetricCard
@@ -112,6 +156,31 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Alerts Section */}
+      {!agentsLoading && alerts.length > 0 && (
+        <div className="rounded-xl border border-gray-800 bg-gray-900 p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-400" />
+            <h3 className="text-lg font-semibold">Alertas</h3>
+          </div>
+          <div className="space-y-2">
+            {alerts.map((alert) => (
+              <div
+                key={alert.id}
+                className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${
+                  alert.severity === 'error'
+                    ? 'border-red-800/50 bg-red-900/10 text-red-400'
+                    : 'border-amber-800/50 bg-amber-900/10 text-amber-400'
+                }`}
+              >
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                <span>{alert.message}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

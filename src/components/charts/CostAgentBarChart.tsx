@@ -88,10 +88,11 @@ export function CostAgentBarChart({ data, loading }: CostAgentBarChartProps) {
               color: '#f3f4f6',
               fontSize: '13px',
             }}
-            formatter={(value: number) => {
+            formatter={(value: any) => {
+              const numVal = Number(value);
               return hasCosts
-                ? [formatCost(value), 'Costo']
-                : [formatTokens(value), 'Tokens'];
+                ? [formatCost(numVal), 'Costo']
+                : [formatTokens(numVal), 'Tokens'];
             }}
             labelFormatter={(label) => {
               const match = sorted.find((d) => d.shortName === label);

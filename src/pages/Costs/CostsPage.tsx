@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { DollarSign, Calendar, Loader2 } from 'lucide-react';
+import { DollarSign, Calendar, Filter } from 'lucide-react';
 import { useCosts } from '../../hooks/useCosts';
 import { useModels } from '../../hooks/useModels';
 import { useMetrics } from '../../hooks/useMetrics';
@@ -22,8 +22,33 @@ export function CostsPage() {
   const { metrics, loading: metricsLoading } = useMetrics();
 
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
+  const [costModelFilter, setCostModelFilter] = useState<string>('all');
 
   const isLoading = costsLoading || modelsLoading || metricsLoading;
+
+  // Model filter options
+  const modelFilterOptions = useMemo(() => {
+    const opts = [{ value: 'all', label: 'Todos los modelos' }];
+    for (const m of models) {
+      opts.push({ value: m.id, label: m.name });
+    }
+    return opts;
+  }, [models]);
+
+  // Filtered data based on model selection
+  const filteredByModel = useMemo(() => {
+    if (!costData || costModelFilter === 'all') return costData?.byModel ?? [];
+    return costData.byModel.filter((m) => m.modelId === costModelFilter);
+  }, [costData, costModelFilter]);
+
+  const filteredByAgent = useMemo(() => {
+    if (!costData || costModelFilter === 'all') return costData?.byAgent ?? [];
+    // Find agents assigned to the selected model
+    const model = models.find((m) => m.id === costModelFilter);
+    if (!model) return costData?.byAgent ?? [];
+    const agentIds = new Set(model.assignedAgents);
+    return costData.byAgent.filter((a) => agentIds.has(a.agentId));
+  }, [costData, costModelFilter, models]);
 
   // Compute total cost from metrics (system-wide)
   const totalSystemCost = metrics?.totalCost ?? 0;
@@ -46,22 +71,40 @@ export function CostsPage() {
         </div>
 
         {/* Time Range Selector */}
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-400" />
-          <div className="flex rounded-lg border border-gray-700 bg-gray-800 p-0.5">
-            {TIME_RANGES.map((range) => (
-              <button
-                key={range.value}
-                onClick={() => setTimeRange(range.value)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  timeRange === range.value
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                {range.label}
-              </button>
-            ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-gray-400" />
+            <div className="flex rounded-lg border border-gray-700 bg-gray-800 p-0.5">
+              {TIME_RANGES.map((range) => (
+                <button
+                  key={range.value}
+                  onClick={() => setTimeRange(range.value)}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    timeRange === range.value
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  {range.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Model Filter */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-gray-400" />
+            <select
+              value={costModelFilter}
+              onChange={(e) => setCostModelFilter(e.target.value)}
+              className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-200 outline-none transition-colors focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              {modelFilterOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -98,11 +141,11 @@ export function CostsPage() {
       {/* Charts Row: Pie + Bar side-by-side */}
       <div className="grid gap-6 lg:grid-cols-2">
         <CostModelPieChart
-          data={costData?.byModel ?? []}
+          data={filteredByModel}
           loading={isLoading}
         />
         <CostAgentBarChart
-          data={costData?.byAgent ?? []}
+          data={filteredByAgent}
           loading={isLoading}
         />
       </div>
@@ -110,7 +153,7 @@ export function CostsPage() {
       {/* Breakdown Table */}
       <CostBreakdownTable
         models={models}
-        byModel={costData?.byModel ?? []}
+        byModel={filteredByModel}
         loading={isLoading}
       />
     </div>

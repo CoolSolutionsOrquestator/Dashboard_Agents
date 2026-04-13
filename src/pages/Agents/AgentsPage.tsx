@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Filter, ArrowUpDown, ArrowUp, ArrowDown, Bot, Loader2 } from 'lucide-react';
+import { Filter, ArrowUpDown, ArrowUp, ArrowDown, Bot, Search } from 'lucide-react';
 import { useAgents } from '../../hooks/useAgents';
 import { useModels } from '../../hooks/useModels';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -24,6 +24,7 @@ export function AgentsPage() {
   // Filters
   const [statusFilter, setStatusFilter] = useState<AgentStatus | 'all'>('all');
   const [modelFilter, setModelFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Sorting
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -56,6 +57,10 @@ export function AgentsPage() {
     if (modelFilter !== 'all') {
       filtered = filtered.filter((a) => a.modelId === modelFilter);
     }
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((a) => a.name.toLowerCase().includes(query));
+    }
 
     if (sortField) {
       filtered.sort((a, b) => {
@@ -65,7 +70,7 @@ export function AgentsPage() {
     }
 
     return filtered;
-  }, [agents, statusFilter, modelFilter, sortField, sortDir]);
+  }, [agents, statusFilter, modelFilter, searchQuery, sortField, sortDir]);
 
   function toggleSort(field: SortField) {
     if (sortField === field) {
@@ -140,12 +145,25 @@ export function AgentsPage() {
           ))}
         </select>
 
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Buscar agente..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="rounded-lg border border-gray-700 bg-gray-800 py-2 pl-9 pr-3 text-sm text-gray-200 outline-none transition-colors placeholder:text-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+
         {/* Active filter count */}
-        {(statusFilter !== 'all' || modelFilter !== 'all') && (
+        {(statusFilter !== 'all' || modelFilter !== 'all' || searchQuery.trim() !== '') && (
           <button
             onClick={() => {
               setStatusFilter('all');
               setModelFilter('all');
+              setSearchQuery('');
             }}
             className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-xs text-gray-400 transition-colors hover:border-red-500/50 hover:text-red-400"
           >
