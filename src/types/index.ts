@@ -65,3 +65,34 @@ export interface SprintStats {
   pending: number;
   percentComplete: number;
 }
+
+// Agent Flow Types
+
+export type AgentRole = 'orchestrator' | 'pm' | 'engineer';
+
+export interface FlowNode {
+  id: string;
+  name: string;
+  role: AgentRole;
+  model: string;
+  status: AgentStatus;
+  lastMessage: string;
+  lastActivity: string;
+}
+
+export interface FlowEdge {
+  id: string;
+  from: string; // FlowNode id
+  to: string;   // FlowNode id
+  label: string;
+  type: 'command' | 'report' | 'task' | 'review';
+}
+
+export interface ChatLog {
+  id: string;
+  fromAgent: string;
+  toAgent: string;
+  message: string;
+  timestamp: string;
+  type: 'command' | 'report' | 'task' | 'review';
+}

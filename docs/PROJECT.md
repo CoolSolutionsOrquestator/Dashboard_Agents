@@ -62,18 +62,20 @@
 ### Sprint 4: Vista de Costos ✅ COMPLETADO
 ### Sprint 5: Filtros y Mejoras ✅ COMPLETADO
 
-### Sprint 6: Gestión de Sprints (Kanban Board) ⬅️ ACTUAL
+### Sprint 6: Gestión de Sprints (Kanban Board) ✅ COMPLETADO
 **Objetivo:** Crear la funcionalidad de gestión de tareas interna.
 - [ ] Implementar componente de Tablero Kanban
 - [ ] Lógica de Drag & Drop para mover historias entre estados
 - [ ] Integrar con resumen general (% de completitud del proyecto)
 - **Entregable:** Sprint Review — validar fluidez del tablero y estados
 
-### Sprint 7: Mapa de Interacción (Agent Flow)
+### Sprint 7: Mapa de Interacción (Agent Flow) ✅ COMPLETADO
 **Objetivo:** Visualizar el "sistema nervioso" de la agencia.
-- [ ] Crear vista de Interacción
-- [ ] Implementar grafo/diagrama: Orquestador → PM → Subagentes
-- [ ] Mostrar burbujas de estado en el grafo (agente escribiendo = brilla)
+- [x] Crear vista de Interacción
+- [x] Implementar grafo/diagrama: Orquestador → PM → Subagentes
+- [x] Mostrar burbujas de estado en el grafo (agente escribiendo = brilla)
+- [x] Log de mensajes entre agentes
+- [x] Leyenda de colores y estados
 - **Entregable:** Sprint Review — verificar si el mapa permite entender quién habla con quién
 
 ### Sprint 8: Control de Acciones y Deploy a Producción

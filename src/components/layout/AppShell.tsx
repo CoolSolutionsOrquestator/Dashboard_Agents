@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Bot,
   Columns,
+  GitBranch,
   DollarSign,
   Activity,
   Menu,
@@ -14,6 +15,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/agents', label: 'Agentes', icon: Bot },
   { to: '/sprints', label: 'Sprints', icon: Columns },
+  { to: '/flow', label: 'Agent Flow', icon: GitBranch },
   { to: '/costs', label: 'Costos', icon: DollarSign },
 ];
 

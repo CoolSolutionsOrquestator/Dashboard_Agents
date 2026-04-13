@@ -3,7 +3,7 @@
 // Internamente lee de mockData, pero cuando se integre la API real,
 // solo se cambia este archivo.
 
-import type { Agent, Model, SystemMetrics, CostTimelinePoint, TokenActivityPoint, Story, SprintStats } from '../types';
+import type { Agent, Model, SystemMetrics, CostTimelinePoint, TokenActivityPoint, Story, SprintStats, FlowNode, FlowEdge, ChatLog } from '../types';
 import {
   mockAgents,
   mockModels,
@@ -12,6 +12,7 @@ import {
   mockTokenActivity,
 } from '../data/mockData';
 import { mockStories } from '../data/mockSprints';
+import { mockFlowNodes, mockFlowEdges, mockChatLogs } from '../data/mockFlow';
 
 // Simula latencia de red para emular llamadas asíncronas
 const delay = (ms: number = 300) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -105,4 +106,21 @@ export async function getSprintStats(): Promise<SprintStats[]> {
       percentComplete: total > 0 ? Math.round((completed / total) * 100) : 0,
     };
   });
+}
+
+// ─── Agent Flow Services ─────────────────────────────────────────────────
+
+export async function getFlowNodes(): Promise<FlowNode[]> {
+  await delay();
+  return mockFlowNodes.map((n) => ({ ...n }));
+}
+
+export async function getFlowEdges(): Promise<FlowEdge[]> {
+  await delay();
+  return mockFlowEdges.map((e) => ({ ...e }));
+}
+
+export async function getChatLogs(): Promise<ChatLog[]> {
+  await delay();
+  return mockChatLogs.map((l) => ({ ...l }));
 }
